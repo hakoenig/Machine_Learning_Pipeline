@@ -35,6 +35,32 @@ def print_mean_max(df, groupby_column, column, time_in_min = True):
         print("\nMax values for {} by {} is:".format(column, groupby_column))
         print(df.groupby([groupby_column]).max()[column].sort_values(ascending=False))
 
+def get_and_plot_feature_importance_top_n_features(n, clf, data):
+    """
+    Prints list of top n import features from tree based cls and shows plot.
+    In:
+        - n: (int) how many top features?
+        - clf: trained classifier
+        - data: data that was cls was trained on. Used to get names of features.
+    """
+    importances = clf.feature_importances_
+    std = np.std([tree.feature_importances_ for tree in clf.estimators_],
+                 axis=0)
+    indices = np.argsort(importances)[::-1]
+
+    # Print the feature ranking
+    print("Feature ranking:")
+    for f in range(n):
+        print("%d. feature %s (%f)" % (f + 1, data.columns[indices[f]], importances[indices[f]]))
+
+    # Plot the feature importances of the forest
+    _ = plt.figure()
+    _ = plt.title("Feature importances")
+    _ = plt.bar(range(data.shape[1]), importances[indices],
+           color="r", yerr=std[indices], align="center")
+    _ = plt.xticks(range(data.shape[1]), data.columns[indices], rotation='vertical')
+    _ = plt.xlim([-1, 15])
+    plt.show()
 
 def report(results, n_top=3):
     """
