@@ -1,6 +1,9 @@
 """
 Module for evaluation and comparision of models.
 """
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 def add_f1_score(df, precision_col, recall_col, target_col):
     """

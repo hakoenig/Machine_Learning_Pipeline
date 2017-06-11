@@ -5,10 +5,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from util.Pipeline.baseline import Zero_Predictor, SAPSIIClassifier
-from util.Pipeline.baseline import Average_Predictor
-from util.Pipeline.baseline import SAPSIICalculatedClassifier, SAPSIIFittedClassifier, SuperLearnerClassifier
-
 
 def define_clfs_params(grid_size):
     """
@@ -27,13 +23,7 @@ def define_clfs_params(grid_size):
         'GB': GradientBoostingClassifier(learning_rate=0.05, subsample=0.5, max_depth=6, n_estimators=10),
         'NB': GaussianNB(),
         'KNN': KNeighborsClassifier(n_neighbors=3),
-        'NN': MLPClassifier(),
-        'SAPS': SAPSIIClassifier(),
-        'SC': SAPSIICalculatedClassifier(),
-        'SF': SAPSIIFittedClassifier(penalty='l1', C=1e5),
-        'SL': SuperLearnerClassifier(),
-        'AVG': Average_Predictor(),
-        'ZERO': Zero_Predictor(),
+        'NN': MLPClassifier()
         }
 
     large_grid = {
@@ -48,12 +38,6 @@ def define_clfs_params(grid_size):
     'KNN': {'n_neighbors': [1,5,10,25,50,100],'weights': ['uniform','distance'],'algorithm': ['auto','ball_tree','kd_tree']},
     'NN': {'activation': ["tanh", "relu"], 'hidden_layer_sizes':[(100, ), (100,50), (100,50,10), (10,50,50), (20,10,10), (50,25,10,5)],
             'solver': ["lbfgs", "sgd"], "alpha": [0.0001, 0.1], 'learning_rate': ["constant", "adaptive"], 'learning_rate_init': [0.001, 0.01, 0.1]},
-    'SAPS': {},
-    'SC': {},
-    'SF': { 'penalty': ['l1','l2'], 'C': [0.00001,0.0001,0.001,0.01,0.1,1,10]},
-    'SL': {},
-    'AVG': {},
-    'ZERO': {},
     }
 
     small_grid = {
@@ -68,12 +52,6 @@ def define_clfs_params(grid_size):
     'KNN' :{'n_neighbors': [1,5,10,25,50,100], 'weights': ['uniform','distance'], 'algorithm': ['auto','ball_tree','kd_tree']},
     'NN': {'activation': ["relu"], 'hidden_layer_sizes':[(50,), (100,50,10), (20,10,10)],
             'solver': ["sgd"], "alpha": [0.0001, 0.1],'learning_rate': ["adaptive"], 'learning_rate_init': [0.001, 0.01]},
-    'SAPS': {},
-    'SC': {},
-    'SF': { 'penalty': ['l1','l2'], 'C': [0.001,0.1,1,10]},
-    'SL': {},
-    'AVG': {},
-    'ZERO':{},
     }
 
     test_grid = {
@@ -88,12 +66,6 @@ def define_clfs_params(grid_size):
     'KNN' :{'n_neighbors': [5], 'weights': ['uniform'], 'algorithm': ['auto']},
     'NN': {'activation': ["relu"], 'hidden_layer_sizes':[(10, ), (50,10)],
             'solver': ["sgd"], "alpha": [0.1], 'learning_rate': ["constant"], 'learning_rate_init': [0.01]},
-    'SAPS': {},
-    'SC': {},
-    'SF': { 'penalty': ['l1'], 'C': [0.01]},
-    'SL': {},
-    'AVG':{},
-    'ZERO':{},
     }
 
     if (grid_size == 'large'):

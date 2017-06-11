@@ -4,6 +4,7 @@ Module for exploration functions.
 
 import psycopg2
 import pydotplus
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -12,6 +13,81 @@ from sklearn import tree
 from sklearn.model_selection import train_test_split
 
 plt.style.use('ggplot')
+
+def plot_sorted_continuous_var(df, col, ylabel, title):
+    """
+    Plots sorted continous var.
+    In:
+        - df: pandas df
+        - col: column to be plotted
+        - ylabel: label of y axis
+        - title: title of plot
+    Adjusted from Kaggle user sudalairajkumar @
+    https://www.kaggle.com/sudalairajkumar/simple-exploration-notebook-mercedes
+    """
+    plt.figure(figsize=(8,6))
+    plt.scatter(range(df.shape[0]), np.sort(df[col].values))
+    plt.xlabel('Index', fontsize=12)
+    plt.ylabel(ylabel, fontsize=12)
+    plt.xlim(-50, len(df) + 500)
+    plt.title(title)
+    plt.show()
+
+def distribution_plot(df, col, title):
+    """
+    Plots sorted continous var.
+    In:
+        - df: pandas df
+        - col: column to be plotted
+        - title: title of plot
+    Adjusted from Kaggle user sudalairajkumar @
+    https://www.kaggle.com/sudalairajkumar/simple-exploration-notebook-mercedes
+    """
+    plt.figure(figsize=(12,8))
+    sns.distplot(df[col].values, bins=50, kde=False)
+    plt.xlabel('column value', fontsize=12)
+    plt.title(title)
+    plt.show()
+
+def unique_values_per_column(df, exclude_cols_list):
+    """
+    In:
+        - df: pandas df
+        - exclude_cols_list: list of columns that shall not be considered.
+
+    Adjusted from Kaggle user sudalairajkumar @
+    https://www.kaggle.com/sudalairajkumar/simple-exploration-notebook-mercedes
+    """
+    unique_values_dict = {}
+    for col in df.columns:
+        if col not in exclude_cols_list:
+            unique_value = str(np.sort(df[col].unique()).tolist())
+            tlist = unique_values_dict.get(unique_value, [])
+            tlist.append(col)
+            unique_values_dict[unique_value] = tlist[:]
+    for unique_val, columns in unique_values_dict.items():
+        print("Columns containing the unique values: ", unique_val)
+        print(columns)
+        print("--------------------------------------------------")
+
+def distribution_of_target_by_categorical_columns(df, target_var, categorical_columns):
+    """
+    In:
+        - df: pandas df
+        - target_var: name of target variable
+        - categorical_columns: list of categorical columns
+    """
+    for var_name in categorical_columns:
+        col_order = np.sort(df[var_name].unique()).tolist()
+        _ = plt.figure(figsize=(12,6))
+        if len(col_order) < 20:
+            _ = sns.violinplot(x=var_name, y=target_var, data=df, order=col_order)
+        else:
+            _ = sns.boxplot(x=var_name, y=target_var, data=df, order=col_order)
+        _ = plt.xlabel(var_name, fontsize=12)
+        _ = plt.ylabel(target_var, fontsize=12)
+        _ = plt.title("Distribution of target variable by " + var_name, fontsize=15)
+        plt.show()
 
 def create_graph_for_decision_tree(X, y, max_depth):
     """
