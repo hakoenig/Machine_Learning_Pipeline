@@ -30,40 +30,123 @@ def keep_track_of_missing_values(df, missing_ind):
     return new_columns
 
 
-def fill_missing_categorical_values(df, list_of_categorical_vars = []):
+def append_column_group_for_list_of_columns(l, column_group_dict, end_of_columngroup_str = "_YY_"):
+    """
+    For each column in l, prepends column group.
+    In:
+        - l: (list) of columns
+        - column_group_dict: (dict) with 'column group': [col1, col2]
+        - end_of_columngroup_str: (str) end of columngroup in col name
+    Out:
+        - new_list
+    """
+    reversed_column_group_dict = {entry: key for key, val in column_group_dict.items() for entry in val}
+    new_list = []
+    for col in l:
+        if type(col) == tuple:
+            # in this case, we support the input of list of tuples as well.
+            # helpful for input like: [(name of binary column, value to replace missing values with)]
+            col_group = reversed_column_group_dict[col[0]]
+            new_list.append((col_group + end_of_columngroup_str + col[0],col[1]))
+        else:
+            col_group = reversed_column_group_dict[col]
+            new_list.append(col_group + end_of_columngroup_str + col)
+    return new_list
+
+
+def rename_columns(df, column_group_dict, end_of_columngroup_str = "_YY_", inplace=True):
+    """
+    Renames columns in df in place by adding
+    key in front of column name. Example:
+    column_group_dict = {'group1': ['col1', 'col2']}
+    would lead to column names: 'group1_col1', 'group1_col2'
+    In:
+        - df: pandas df
+        - column_group_dict: (dict) with group names as keys
+                             and list of associated columns as value
+        - end_of_columngroup_str: (str) end of columngroup in col name
+        - inplace: (bool) whether or not to replace colnames inplace
+    """
+    new_col_names_dict = {} # we will use this to update col names
+    for column_group, col_list in column_group_dict.items():
+        for col in col_list:
+            new_col_names_dict[col] = column_group + end_of_columngroup_str + col
+
+    if inplace:
+        df.rename(columns=new_col_names_dict, inplace=inplace)
+    else:
+        return df.rename(columns=new_col_names_dict, inplace=inplace)
+
+
+def get_dict_of_updated_column_groups(df, old_dict, list_of_appended_str, end_of_columngroup_str = "_YY_"):
+    """
+    Creates an updated dict of column groups. Due to feature engineering, column groups
+    might have expanded. This function gets an updated dict.
+    In:
+        - df: pandas df
+        - old_dict: (dict) of old column groups
+        - list_of_appended_str: (list) of str that got appended to newly created features,
+                                e.g. '_missing', or '_dummy'
+        - end_of_columngroup_str: (str) end of columngroup in col name
+    """
+    new_dict = {}
+    list_of_current_col = df.columns
+
+    for column_group, col_list in old_dict.items():
+        new_dict[column_group] = []
+
+        for col in col_list:
+            colgroup_col = column_group + end_of_columngroup_str + col
+
+            for current_col in list_of_current_col:
+                if current_col.startswith(colgroup_col):
+                    if current_col not in new_dict[column_group]:
+                            new_dict[column_group].append(current_col)
+    return new_dict
+
+
+def fill_missing_categorical_values(df, list_of_categorical_vars = [], df_to_get_mode_from = None):
     """
     Fills missing categorical values. Missing categorical vars in
     list_of_categorical_vars are replaced by most often occuring category.
     In:
         - df: pandas df
         - list_of_categorical_vars: (list) of categorical variables
+        - df_to_get_mode_from: pandas df; if passed; using that df's to get mode for categorical
+                                column
     Out:
         - df
     """
     for cat_var in list_of_categorical_vars:
-        df[cat_var] = df[cat_var].fillna(df[cat_var].value_counts().idxmax())
+        if df_to_get_mode_from is not None:
+            df[cat_var] = df[cat_var].fillna(df_to_get_mode_from[cat_var].mode()[0])
+        else:
+            df[cat_var] = df[cat_var].fillna(df[cat_var].mode()[0])
     return df
 
 
-def fill_missing_values(df, class_mean = False, key = None):
+def fill_missing_values(df, df_to_get_mean_from = None):
     """
-    Replaces missing values with mean of class.
+    Replaces missing values with mean.
     In:
         - df: pandas df
-        - class_mean: (bool) whether or not to use mean of class
-        - key: column for classes (opt)
+        - df_to_get_mean_from: pandas df; if passed; using that df's to get
+                                mean of column
     Out:
         - df
     """
-    if class_mean:
-        key_col = df[key]
-        df = df.groupby(key).transform(lambda x: x.fillna(x.mean()))
-        df[key] = key_col
-        return df
-    else:
-        for col in df.columns[df.isnull().any()]:
-            df[col] = df[col].fillna(df[col].mean())
-        return df
+    for col in df.columns[df.isnull().any()]:
+        if df_to_get_mean_from is not None:
+            try:
+                df[col] = df[col].fillna(df_to_get_mean_from[col].mean())
+            except:
+                print("Warning: Tried to get mean of col: ", col)
+        else:
+            try:
+                df[col] = df[col].fillna(df[col].mean())
+            except:
+                print("Warning: Tried to get mean of col: ", col)
+    return df
 
 
 def in_bound_test(value, start, end):
@@ -176,26 +259,38 @@ def create_missing_value_colum_in_testset(traindf, testdf, missing_ind):
             testdf[col] = new_col
 
 
-def discretize_cont_var(df, cont_var, n, dummy_code, drop=False):
+def discretize_cont_var(df, cont_var_list, n, dummy_code, drop=False):
     """
     Discretizes  continuous variable.
     In:
         - df: pandas dataframe
-        - cont_var: continues variable to be discretized
+        - cont_var_list: list of continues variable to be discretized
         - n: number of percentiles
         - dummy_code: (str) to append to dummy columns
         - drop: (bool) to drop continous variable
     Out:
         - df
     """
-    step_size = 1/n
-    bucket_array = np.arange(0, 1+step_size, step_size)
+    if type(cont_var_list) == list:
 
-    df[cont_var + dummy_code] = pd.qcut(df[cont_var], bucket_array)
-    df = pd.get_dummies(df, columns=[cont_var + dummy_code])
+        for cont_var in cont_var_list:
+            step_size = 1/n
+            bucket_array = np.arange(0, 1+step_size, step_size)
 
-    if drop:
-        del df[cont_var]
+            df[cont_var + dummy_code] = pd.qcut(df[cont_var], bucket_array)
+            df = pd.get_dummies(df, columns=[cont_var + dummy_code])
+
+            if drop:
+                del df[cont_var]
+    else:
+        step_size = 1/n
+        bucket_array = np.arange(0, 1+step_size, step_size)
+
+        df[cont_var + dummy_code] = pd.qcut(df[cont_var_list], bucket_array)
+        df = pd.get_dummies(df, columns=[cont_var_list + dummy_code])
+
+        if drop:
+            del df[cont_var_list]
 
     return df
 
